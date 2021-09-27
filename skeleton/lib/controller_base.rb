@@ -21,6 +21,7 @@ class ControllerBase
   def redirect_to(url)
     @res.status = 302
     @res["Location"] = url
+    session.store_session(@res)
     nil
   end
 
@@ -31,6 +32,7 @@ class ControllerBase
     raise "double render error" if already_built_response?
     @res.write(content)
     @res.content_type = content_type
+    session.store_session(@res)
     @already_built_response = true
     nil
   end
@@ -38,10 +40,15 @@ class ControllerBase
   # use ERB and binding to evaluate templates
   # pass the rendered html to render_content
   def render(template_name)
+    controller_name = "#{self.class.name}".underscore
+    path = "views/#{controller_name}/#{template_name}.html.erb"
+    result = ERB.new(File.read(File.join(File.dirname(path), "#{template_name}.html.erb"))).result(binding)
+    render_content(result, "text/html")
   end
 
   # method exposing a `Session` object
   def session
+    @session ||= Session.new(@req)
   end
 
   # use this with the router to call action_name (:index, :show, :create...)
